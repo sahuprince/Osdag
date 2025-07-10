@@ -5,7 +5,7 @@ import pandas as pd
 import glob
 import os
 
-
+# ARRANGE: Checking for required files before running tests
 if not (os.path.exists('tests/test_cases/FinPlateTest1.osi') and os.path.exists('tests/Osdag Data for Unit Tests.xlsx')):
     pytest.skip('Required OSI or Excel file missing, skipping test.', allow_module_level=True)
 
@@ -31,14 +31,19 @@ def extract_results_from_output(output):
 
 @pytest.mark.parametrize("osi_path", sorted(glob.glob("tests/test_cases/FinPlateTest*.osi")))
 def test_fin_plate_connection_vs_excel(osi_path):
+    # ARRANGE: Preparing all the inputs and objects needed for the test
     osi_filename = os.path.basename(osi_path)
     excel_path = "tests/Osdag Data for Unit Tests.xlsx"
     osi_data = yaml.safe_load(open(osi_path))
     conn = FinPlateConnection()
     conn.set_input_values(osi_data)
+    
+    # ACT: Running the code under test to get the output
     output = conn.output_values(flag=True)
     results = extract_results_from_output(output)
     expected = get_expected_from_excel(excel_path, osi_filename)
+    
+    # ASSERT: Checking that the results match what we expect
     for key, exp_val in expected.items():
         assert key in results, f"Missing result for {key}"
         # Use tolerance for float comparison
@@ -47,23 +52,27 @@ def test_fin_plate_connection_vs_excel(osi_path):
         else:
             assert results[key] == exp_val, f"Mismatch for {key}: {results[key]} != {exp_val}"
 
+
 def test_fin_plate_connection():
-    # 1. Load OSI file
+    # ARRANGE: Setting up everything needed for the test
+    # 1. Loading OSI file
     with open('tests/test_cases/FinPlateTest1.osi', 'r') as f:
         osi_data = yaml.safe_load(f)
         print("OSI Data:", osi_data)  # Debug print
 
-    # 2. Create FinPlateConnection instance
+    # 2. Creating FinPlateConnection instance
     conn = FinPlateConnection()
 
-    # 3. Set input values (mapping is handled in set_input_values)
+    # 3. Setting input values (mapping is handled in set_input_values)
     conn.set_input_values(osi_data)
 
-    # 4. Assert bolt slip factor from OSI file
+    # ASSERT: Checking that the input was loaded as expected
     assert osi_data['Bolt.Slip_Factor'] == '0.3'
 
-    # 6. Check output fields are populated
+    # ACT: Running the main method to get the output
     output = conn.output_values(flag=True)
+
+    # ASSERT: Checking that the output fields are populated as expected
     assert any(o[0] == 'Bolt.Diameter' and o[3] for o in output)
     assert any(o[0] == 'Bolt.Grade_Provided' and o[3] for o in output)
     assert any(o[0] == 'Bolt.Shear' and o[3] for o in output)
@@ -76,24 +85,27 @@ def test_fin_plate_connection():
     assert any(o[0] == 'Weld.Strength' and o[3] for o in output)
     assert any(o[0] == 'Weld.Stress' and o[3] for o in output)
 
-    # 7. Check CAD generation (mocked or real)
+    # ACT: Trying to generate CAD (mocked or real)
     try:
         if hasattr(conn, 'get_3d_components'):
             conn.get_3d_components()
         cad_success = True
     except Exception as e:
         cad_success = False
+    # ASSERT: Making sure CAD generation does not fail
     assert cad_success, 'CAD generation failed (OCC dependency or other error)'
 
-    # 8. Check report generation (mocked or real)
+    # ACT: Trying to generate report (mocked or real)
     try:
         if hasattr(conn, 'save_design'):
             conn.save_design(popup_summary=False)
         report_success = True
     except Exception as e:
         report_success = False
+    # ASSERT: Making sure report generation does not fail
     assert report_success, 'Report generation failed (LaTeX or other error)'
 
+    # ARRANGE/ASSERT: Checking for required OSI file for further tests
     if not os.path.exists('osi_files/TensionBoltedTest1.osi'):
         pytest.skip("Missing OSI file, skipping test.")
 
