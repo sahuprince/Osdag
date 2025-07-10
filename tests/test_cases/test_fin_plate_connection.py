@@ -137,4 +137,4 @@ def load_expected_values(path):
         'Detailing.Edge_type': df['Edge Type Value'],
         'Detailing.Corrosive_Influences': df['Corrosive Influences Value']
     }
-    return expected 
+    return expected
